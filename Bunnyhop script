@@ -1,0 +1,67 @@
+-- Generated and Made by ChatGPT, not me
+
+-- Получаем игрока и его персонажа
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Ждем, пока персонаж загрузится
+player.CharacterAdded:Wait()
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Настройки Bunnyhop
+local bunnyhopEnabled = true -- Флаг для включения/выключения механики
+local bunnyhopMultiplier = 1.2 -- Коэффициент ускорения
+local maxSpeed = 50 -- Максимальная скорость
+local isJumping = false
+local lastCameraAngle = nil
+
+-- Подключаемся к событиям прыжка
+humanoid.Jumping:Connect(function(active)
+    if bunnyhopEnabled then
+        isJumping = active
+    end
+end)
+
+-- Подключаемся к RenderStepped для отслеживания поворота камеры
+game:GetService("RunService").RenderStepped:Connect(function()
+    if bunnyhopEnabled and isJumping then
+        local camera = workspace.CurrentCamera
+        local currentCameraAngle = camera.CFrame.LookVector
+
+        if lastCameraAngle then
+            -- Вычисляем угол поворота камеры
+            local angleDifference = math.acos(currentCameraAngle:Dot(lastCameraAngle))
+
+            -- Если камера повернулась, увеличиваем скорость
+            if angleDifference > 0.05 then
+                local velocity = rootPart.Velocity
+                local horizontalSpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+
+                if horizontalSpeed < maxSpeed then
+                    local newVelocity = velocity + (currentCameraAngle * bunnyhopMultiplier)
+                    rootPart.Velocity = Vector3.new(newVelocity.X, velocity.Y, newVelocity.Z)
+                end
+            end
+        end
+
+        lastCameraAngle = currentCameraAngle
+    else
+        lastCameraAngle = nil
+    end
+end)
+
+-- Подключаемся к чату для обработки команд
+local function onChatMessage(message)
+    if message == "!stop" then
+        bunnyhopEnabled = false
+        print("Bunnyhop отключен")
+    elseif message == "!start" then
+        bunnyhopEnabled = true
+        print("Bunnyhop включен")
+    end
+end
+
+-- Обработчик сообщений в чате
+player.Chatted:Connect(onChatMessage)
